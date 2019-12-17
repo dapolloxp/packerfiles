@@ -1,0 +1,55 @@
+{
+
+  "variables": {
+    "subscription_id" : "",
+    "build_version" : "",
+    "packer_client_secret" : "",
+    "packer_client_id" : "",
+    "tenant_id" : ""
+  },
+  "builders": [{
+    "type": "azure-arm",
+
+    "client_id": "{{user `packer_client_id`}}",
+    "client_secret": "{{user `packer_client_secret`}}",
+    "tenant_id": "{{user `tenant_id`}}",
+    "subscription_id" : "{{user `subscription_id`}}",
+
+    "managed_image_resource_group_name": "PackerManagedImages",
+    "managed_image_name": "AzureCycleCentOS{{user `build_version`}}",
+
+    "os_type": "Linux",
+    "image_publisher": "OpenLogic",
+    "image_offer": "CentOS",
+    "image_sku": "7.6",
+    "azure_tags": {
+        "task": "Azure Cycle Custom Image",
+        "company" : "Microsoft",
+        "ostype" : "CentOS Linux",
+        "buildversion" : "{{user `build_version`}}"
+    },
+
+    "location": "East US 2",
+    "vm_size": "Standard_DS2_v2"
+  }],
+  "provisioners": [{
+    "execute_command": "chmod +x {{ .Path }}; {{ .Vars }} sudo -E sh '{{ .Path }}'",
+    "inline": [      
+      "yum install -y yum-utils device-mapper-persistent-data lvm2",
+      "yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo",
+      "yum install -y docker-ce docker-ce-cli containerd.io",
+      "rpm --import https://packages.microsoft.com/keys/microsoft.asc",    
+      "echo -e '[azure-cli]' >> /etc/yum.repos.d/azure-cli.repo",
+      "echo -e 'name=Azure CLI' >> /etc/yum.repos.d/azure-cli.repo",
+      "echo -e 'baseurl=https://packages.microsoft.com/yumrepos/azure-cli' >> /etc/yum.repos.d/azure-cli.repo",
+      "echo -e 'enabled=1' >> /etc/yum.repos.d/azure-cli.repo",
+      "echo -e 'gpgcheck=1' >> /etc/yum.repos.d/azure-cli.repo",
+      "echo -e 'gpgkey=https://packages.microsoft.com/keys/microsoft.asc' >> /etc/yum.repos.d/azure-cli.repo",
+      "yum install -y azure-cli",
+      "systemctl enable docker",
+      "/usr/sbin/waagent -force -deprovision+user && export HISTSIZE=0 && sync"      
+    ],
+    "inline_shebang": "/bin/sh -x",
+    "type": "shell"
+  }]
+}
